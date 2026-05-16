@@ -55,17 +55,16 @@ export default function NetworkGraph({ graphData, onNodeClick }: { graphData: an
   }, []);
 
   // 3. Custom Node Render with Dynamic Glow
-  // 3. Custom Node Render with Dynamic Glow and Initials
   const renderGlowNode = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-    const baseColor = node.color || '#4f46e5'; 
-    const glowColor = GLOW_COLORS[baseColor] || '#88aaff'; 
+    const baseColor = node.color || '#4f46e5'; // Default to indigo if color is missing
+    const glowColor = GLOW_COLORS[baseColor] || '#88aaff'; // Fallback glow
 
     // Scale node size based on threat score, with a minimum size
-    const baseRadius = 10; // Slightly increased base radius to fit text better
+    const baseRadius = 8;
     const threatFactor = node.threatScore ? Math.log2(node.threatScore + 1) * 1.5 : 0;
-    const radius = Math.max(baseRadius + threatFactor, 6) / Math.sqrt(globalScale); 
+    const radius = Math.max(baseRadius + threatFactor, 5) / Math.sqrt(globalScale); // Size decreases slightly on zoom-in
     
-    // Intensity scales with net shift
+    // Intensity scales with net shift, providing visual feedback on status
     const netShift = node.leverageDelta || 0;
     const pulseFactor = 1 + Math.max(Math.abs(netShift) / 10, 0) * (0.3 * Math.sin(Date.now() / 300));
     const glowRadius = Math.max(radius * 1.8, 10) * pulseFactor;
@@ -76,41 +75,15 @@ export default function NetworkGraph({ graphData, onNodeClick }: { graphData: an
     ctx.shadowColor = glowColor;
     ctx.shadowBlur = Math.max(glowRadius, 5); 
     ctx.beginPath();
-    ctx.arc(node.x, node.y, radius * 0.9, 0, 2 * Math.PI, false); 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0)'; 
+    ctx.arc(node.x, node.y, radius * 0.9, 0, 2 * Math.PI, false); // Slightly smaller arc for shadow core
+    ctx.fillStyle = 'rgba(0, 0, 0, 0)'; // Invisible core for glow effect
     ctx.fill();
-
-    // Reset shadow blur so the text and main circle don't look blurry
-    ctx.shadowBlur = 0;
 
     // Draw the main node circle (Solid)
     ctx.beginPath();
     ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
     ctx.fillStyle = baseColor;
     ctx.fill();
-
-    // --- NEW: EXTRACT AND DRAW INITIALS ---
-    const name = node.name || "?";
-    const words = name.trim().split(/\s+/);
-    let initials = words[0].substring(0, 1).toUpperCase();
-    
-    // If they have two names (e.g., "John Doe"), grab "JD"
-    if (words.length > 1) {
-        initials += words[words.length - 1].substring(0, 1).toUpperCase();
-    } 
-    // If one name (e.g., "Alexander"), grab "AL"
-    else if (name.length > 1) {
-        initials = name.substring(0, 2).toUpperCase();
-    }
-
-    // Set font properties relative to the node radius
-    const fontSize = radius * 0.85; 
-    ctx.font = `bold ${fontSize}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff'; // Crisp white text
-    ctx.fillText(initials, node.x, node.y);
-    // --------------------------------------
     
     // Highlight active nodes dynamically
     if(node.active) {
