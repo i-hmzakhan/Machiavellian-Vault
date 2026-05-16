@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Activity, ShieldAlert, Send, UserPlus, X, Cpu, Trash2, History, MessageSquare } from 'lucide-react';
+import { Activity, ShieldAlert, Send, UserPlus, X, Cpu, Trash2, MessageSquare } from 'lucide-react';
 import { getNetworkData, addNode, deleteNode, commitGlobalLog, getStrategicAdvice, getNodeHistory } from '../lib/api';
 
 const NetworkGraph = dynamic(() => import('../components/NetworkGraph'), { ssr: false });
