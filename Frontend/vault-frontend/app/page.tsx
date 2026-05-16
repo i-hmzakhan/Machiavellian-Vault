@@ -45,6 +45,11 @@ export default function VaultDashboard() {
   const [advisorInput, setAdvisorInput] = useState("");
   const [consultChat, setConsultChat] = useState<{role: string, text: string}[]>([]);
   const [logChat, setLogChat] = useState<{role: string, text: string}[]>([]);
+  // --- DAILY FUEL GAUGE STATES ---
+  const MAX_DAILY_REQUESTS = 1500;
+  const MAX_DAILY_TOKENS = 1000000;
+  const [requestsSpent, setRequestsSpent] = useState(0);
+  const [tokensSpent, setTokensSpent] = useState(0);
 
   const activeChat = advisorMode === 'consult' ? consultChat : logChat;
 
@@ -59,6 +64,34 @@ export default function VaultDashboard() {
       fetchMap();
     }
   }, [isUnlocked]);
+  // --- PERSISTENT MEMORY & MIDNIGHT RESET ---
+  useEffect(() => {
+    if (!isUnlocked) return;
+    
+    const today = new Date().toLocaleDateString();
+    const savedDate = localStorage.getItem('vault_date');
+    const savedReqs = localStorage.getItem('vault_requests');
+    const savedTokens = localStorage.getItem('vault_tokens');
+
+    // If it is a new day, wipe the slate clean
+    if (savedDate !== today) {
+      localStorage.setItem('vault_date', today);
+      localStorage.setItem('vault_requests', '0');
+      localStorage.setItem('vault_tokens', '0');
+      setRequestsSpent(0);
+      setTokensSpent(0);
+    } else {
+      // If same day, load current fuel levels
+      if (savedReqs) setRequestsSpent(parseInt(savedReqs, 10));
+      if (savedTokens) setTokensSpent(parseInt(savedTokens, 10));
+    }
+  }, [isUnlocked]);
+
+  // Save to memory immediately upon any change
+  useEffect(() => {
+    localStorage.setItem('vault_requests', requestsSpent.toString());
+    localStorage.setItem('vault_tokens', tokensSpent.toString());
+  }, [requestsSpent, tokensSpent]);
 
   // --- HANDLERS ---
   const handleUnlock = (e: React.FormEvent) => {
@@ -125,6 +158,13 @@ export default function VaultDashboard() {
 
   const executeCommit = async (logText: string, specificTargetName: string | null = null) => {
     setIsProcessing(true);
+    if (requestsSpent >= MAX_DAILY_REQUESTS) {
+      alert("CRITICAL: Daily API uplink quota exceeded. Reset occurs at midnight.");
+      setIsProcessing(false);
+      return;
+    }
+    setRequestsSpent(prev => prev + 1);
+    setTokensSpent(prev => prev + 150); // Estimated tokens for a commit
     const finalLog = specificTargetName ? `Focusing on ${specificTargetName}: ${logText}` : logText;
     
     try {
@@ -153,6 +193,13 @@ export default function VaultDashboard() {
     if (!advisorInput.trim()) return;
     const userInput = advisorInput;
     setAdvisorInput("");
+    if (requestsSpent >= MAX_DAILY_REQUESTS) {
+      alert("CRITICAL: Daily API uplink quota exceeded. Reset occurs at midnight.");
+      return;
+    }
+    setRequestsSpent(prev => prev + 1);
+    // Consultations use more tokens due to history context
+    setTokensSpent(prev => prev + (advisorMode === 'consult' ? 350 : 150));
 
     if (advisorMode === 'log') {
       setLogChat(prev => [...prev, { role: "user", text: `[SYSTEM LOG]: ${userInput}` }]);
@@ -277,6 +324,42 @@ export default function VaultDashboard() {
 
             <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-700/50 to-transparent shrink-0"></div>
 
+            {/* DAILY FUEL GAUGES */}
+            <div className="px-6 py-4 border-b border-slate-800/50 bg-slate-950/60 shrink-0 space-y-3">
+              
+              {/* Requests Gauge */}
+              <div>
+                <div className="flex justify-between items-end mb-1">
+                  <span className="text-[8px] text-slate-500 uppercase tracking-[0.2em] font-bold">Daily Requests</span>
+                  <span className="text-[9px] font-mono tracking-widest font-bold text-indigo-400">
+                    {MAX_DAILY_REQUESTS - requestsSpent} / {MAX_DAILY_REQUESTS}
+                  </span>
+                </div>
+                <div className="w-full h-1 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                  <div 
+                    className={`h-full transition-all duration-500 bg-indigo-500 shadow-[0_0_8px_#4f46e5] ${requestsSpent > (MAX_DAILY_REQUESTS * 0.9) ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : ''}`}
+                    style={{ width: `${Math.max(0, 100 - (requestsSpent / MAX_DAILY_REQUESTS) * 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Tokens Gauge */}
+              <div>
+                <div className="flex justify-between items-end mb-1">
+                  <span className="text-[8px] text-slate-500 uppercase tracking-[0.2em] font-bold">Daily Tokens (Est)</span>
+                  <span className="text-[9px] font-mono tracking-widest font-bold text-emerald-400">
+                    {((MAX_DAILY_TOKENS - tokensSpent) / 1000).toFixed(1)}k / {(MAX_DAILY_TOKENS / 1000).toFixed(0)}k
+                  </span>
+                </div>
+                <div className="w-full h-1 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                  <div 
+                    className={`h-full transition-all duration-500 bg-emerald-500 shadow-[0_0_8px_#10b981] ${tokensSpent > (MAX_DAILY_TOKENS * 0.9) ? 'bg-orange-500 shadow-[0_0_8px_#f97316]' : ''}`}
+                    style={{ width: `${Math.max(0, 100 - (tokensSpent / MAX_DAILY_TOKENS) * 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+            </div>
             {/* STATE 3: ADD NODE */}
             {isAddingNode && (
               <div className="flex-1 p-6 space-y-5 overflow-y-auto">
