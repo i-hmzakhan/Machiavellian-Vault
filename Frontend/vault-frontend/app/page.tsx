@@ -24,7 +24,7 @@ export default function VaultDashboard() {
   // Map Data
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const fgRef = useRef<any>();
+  const fgRef = useRef<any>(null);
 
   // Add Node State
   const [newNodeName, setNewNodeName] = useState("");
