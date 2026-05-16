@@ -216,11 +216,11 @@ export default function VaultDashboard() {
 
       {/* THE DASHBOARD */}
       {isUnlocked && (
-        <div className="flex h-screen w-full bg-slate-950 text-slate-300 font-sans overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+        <div className="flex flex-col lg:flex-row h-[100dvh] w-full bg-slate-950 text-slate-300 font-sans overflow-hidden animate-in fade-in zoom-in-95 duration-500">
           
           {/* MAP CANVAS */}
-          <div className="flex-1 relative border-r border-slate-800">
-            <div className="absolute top-6 left-6 z-10 pointer-events-none">
+          <div className="w-full h-[40%] lg:h-full lg:flex-1 relative border-b lg:border-b-0 lg:border-r border-slate-800 shrink-0">
+            <div className="top-3 left-3 lg:top-6 lg:left-6">
               <h1 className="text-2xl font-bold text-white tracking-widest drop-shadow-md">THE VAULT</h1>
               <p className="text-xs text-slate-500 uppercase tracking-widest mt-1">Machiavellian Protocol</p>
               <div className="space-y-2 bg-slate-950/60 p-3 rounded border border-slate-800/50 backdrop-blur-sm inline-block">
@@ -238,7 +238,7 @@ export default function VaultDashboard() {
           </div>
 
           {/* RIGHT PANEL */}
-          <div className="w-[450px] bg-slate-900 flex flex-col shadow-2xl z-20">
+          <div className="w-full flex-1 lg:flex-none lg:w-[450px] lg:h-full bg-slate-900 flex flex-col shadow-2xl z-20 overflow-hidden">
             
             {/* HEADER */}
             <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/50 shrink-0">
