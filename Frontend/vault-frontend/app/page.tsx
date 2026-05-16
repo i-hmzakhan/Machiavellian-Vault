@@ -50,6 +50,7 @@ export default function VaultDashboard() {
   const MAX_DAILY_TOKENS = 1000000;
   const [requestsSpent, setRequestsSpent] = useState(0);
   const [tokensSpent, setTokensSpent] = useState(0);
+  const [isMemoryLoaded, setIsMemoryLoaded] = useState(false);
 
   const activeChat = advisorMode === 'consult' ? consultChat : logChat;
 
@@ -85,13 +86,18 @@ export default function VaultDashboard() {
       if (savedReqs) setRequestsSpent(parseInt(savedReqs, 10));
       if (savedTokens) setTokensSpent(parseInt(savedTokens, 10));
     }
+    
+    // Disengage the safety lock only AFTER loading is complete
+    setIsMemoryLoaded(true);
   }, [isUnlocked]);
 
-  // Save to memory immediately upon any change
+  // Save to memory immediately upon any change (BUT ONLY AFTER LOADED)
   useEffect(() => {
+    if (!isMemoryLoaded) return; // The Safety Lock prevents overwriting with 0 on refresh
+    
     localStorage.setItem('vault_requests', requestsSpent.toString());
     localStorage.setItem('vault_tokens', tokensSpent.toString());
-  }, [requestsSpent, tokensSpent]);
+  }, [requestsSpent, tokensSpent, isMemoryLoaded]);
 
   // --- HANDLERS ---
   const handleUnlock = (e: React.FormEvent) => {
