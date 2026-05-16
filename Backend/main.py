@@ -247,12 +247,21 @@ async def get_advice_global(request: GlobalAdviceRequest):
             for c in commits_res.data:
                 network_context += f"  > History: {c['content_log']} (Shift: {c['calculated_diff']})\n"
 
-        # 2. Format the Chat History
+        # --- THE SLIDING WINDOW PROTOCOL ---
+        MAX_HISTORY = 6 # Limit memory to the last 3 interactions
+        
+        # Slice the history array if it gets too long
+        if request.chat_history and len(request.chat_history) > MAX_HISTORY:
+            recent_history = request.chat_history[-MAX_HISTORY:]
+        else:
+            recent_history = request.chat_history
+
+        # 2. Format the Chat History (Using the lightweight recent_history)
         history_context = "PREVIOUS CONVERSATION THREAD:\n"
-        if not request.chat_history:
+        if not recent_history:
             history_context += "[No previous messages in this session]\n"
         else:
-            for msg in request.chat_history:
+            for msg in recent_history:
                 role = "GENERAL (User)" if msg.get("role") == "user" else "ADVISOR (You)"
                 history_context += f"{role}: {msg.get('text')}\n"
                 
