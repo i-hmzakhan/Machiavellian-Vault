@@ -11,7 +11,7 @@ interface NetworkGraphProps {
 export default function NetworkGraph({ graphData, onNodeClick }: NetworkGraphProps) {
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const fgRef = useRef<any>();
+  const fgRef = useRef<any>(null);
 
   useEffect(() => {
     const updateDimensions = () => {
