@@ -323,6 +323,17 @@ export default function VaultDashboard() {
                   <h2 className="text-xs font-bold text-slate-300 tracking-[0.2em] flex items-center uppercase"><Cpu size={14} className="mr-2 text-indigo-400"/> Command Center</h2>
                 )}
               </div>
+              <div className="flex items-center space-x-1">
+                {/* Tactical Add Target Icon (Only visible in global view) */}
+                {!isAddingNode && !selectedNode && (
+                  <button 
+                    onClick={() => setIsAddingNode(true)} 
+                    className="p-2 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-md transition-colors" 
+                    title="Initialize New Target"
+                  >
+                    <UserPlus size={16} />
+                  </button>
+                )}
               <button onClick={() => { setIsPanelOpen(false); setIsAddingNode(false); setSelectedNode(null); }} className="p-2 -mr-2 text-slate-500 hover:text-white transition-colors">
                 <X size={18} />
               </button>
@@ -454,16 +465,7 @@ export default function VaultDashboard() {
             {!isAddingNode && !selectedNode && (
               <div className="flex flex-col flex-1 overflow-hidden">
                 
-                {/* The embedded Add Target Button */}
-                <div className="px-6 pt-4 pb-2 shrink-0">
-                   <button 
-                     onClick={() => setIsAddingNode(true)} 
-                     className="w-full py-3 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:bg-slate-800/80 text-slate-300 flex items-center justify-center text-xs tracking-[0.2em] font-semibold transition-all shadow-sm"
-                   >
-                     <UserPlus size={14} className="mr-3 text-indigo-400" /> ADD TARGET
-                   </button>
-                </div>
-
+               
                 <div className="flex border-b border-slate-800/50 px-6 space-x-4 shrink-0">
                   <button onClick={() => setAdvisorMode('consult')} className={`py-4 text-[10px] uppercase tracking-[0.15em] font-bold transition-colors ${advisorMode === 'consult' ? 'text-indigo-400 border-b-2 border-indigo-500' : 'text-slate-600 hover:text-slate-400'}`}>Consult</button>
                   <button onClick={() => setAdvisorMode('log')} className={`py-4 text-[10px] uppercase tracking-[0.15em] font-bold transition-colors ${advisorMode === 'log' ? 'text-emerald-400 border-b-2 border-emerald-500' : 'text-slate-600 hover:text-slate-400'}`}>Global Log</button>
