@@ -45,6 +45,7 @@ export default function VaultDashboard() {
   const [advisorInput, setAdvisorInput] = useState("");
   const [consultChat, setConsultChat] = useState<{role: string, text: string}[]>([]);
   const [logChat, setLogChat] = useState<{role: string, text: string}[]>([]);
+  
   // --- DAILY FUEL GAUGE STATES ---
   const MAX_DAILY_REQUESTS = 1500;
   const MAX_DAILY_TOKENS = 1000000;
@@ -65,6 +66,7 @@ export default function VaultDashboard() {
       fetchMap();
     }
   }, [isUnlocked]);
+
   // --- PERSISTENT MEMORY & MIDNIGHT RESET ---
   useEffect(() => {
     if (!isUnlocked) return;
@@ -334,10 +336,11 @@ export default function VaultDashboard() {
                     <UserPlus size={16} />
                   </button>
                 )}
-              <button onClick={() => { setIsPanelOpen(false); setIsAddingNode(false); setSelectedNode(null); }} className="p-2 -mr-2 text-slate-500 hover:text-white transition-colors">
-                <X size={18} />
-              </button>
-            </div>
+                <button onClick={() => { setIsPanelOpen(false); setIsAddingNode(false); setSelectedNode(null); }} className="p-2 -mr-2 text-slate-500 hover:text-white transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+            </div> {/* <-- THIS WAS THE MISSING BRACKET THAT CRASHED THE SYSTEM */}
 
             <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-700/50 to-transparent shrink-0"></div>
 
