@@ -57,11 +57,11 @@ export async function commitGlobalLog(rawLog: string) {
 
 // Add the history parameter to the function
 export const getStrategicAdvice = async (query: string, history: any[], targetIds: string[] = []) => {
-  const response = await fetch(`${API_BASE_URL}/strategy`, {
+  const response = await fetch(`${API_BASE_URL}/get-advice-global`, {
     method: 'POST',
     headers: getHeaders(), // <-- FIXED: Replaced the typo with your clean helper function
     body: JSON.stringify({ 
-      query, 
+      scenario_question: query,
       chat_history: history,
       target_ids: targetIds // Injecting the scanned IDs
     }),
