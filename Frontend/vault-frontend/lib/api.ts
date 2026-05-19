@@ -36,7 +36,7 @@ export async function addNode(name: string, baseValue: number, backstory: string
 export async function deleteNode(targetId: string) {
   const response = await fetch(`${API_BASE_URL}/delete-node`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(), // <-- FIXED: Now uses your helper to include the key
     body: JSON.stringify({ target_entity_id: targetId }),
   });
   if (!response.ok) throw new Error('Failed to terminate target');
@@ -56,18 +56,19 @@ export async function commitGlobalLog(rawLog: string) {
 }
 
 // Add the history parameter to the function
-export async function getStrategicAdvice(scenario: string, history: any[] = []) {
-  const response = await fetch(`${API_BASE_URL}/get-advice-global`, {
+export const getStrategicAdvice = async (query: string, history: any[], targetIds: string[] = []) => {
+  const response = await fetch(`${API_BASE_URL}/strategy`, {
     method: 'POST',
-    headers: getHeaders(),
+    headers: getHeaders(), // <-- FIXED: Replaced the typo with your clean helper function
     body: JSON.stringify({ 
-      scenario_question: scenario,
-      chat_history: history // Pass the thread to Python
+      query, 
+      chat_history: history,
+      target_ids: targetIds // Injecting the scanned IDs
     }),
   });
-  if (!response.ok) throw new Error('Failed to fetch advice');
-  return await response.json();
-}
+  if (!response.ok) throw new Error('Failed to get strategy');
+  return response.json();
+};
 
 export async function getNodeHistory(targetId: string) {
   const response = await fetch(`${API_BASE_URL}/node-history`, {
