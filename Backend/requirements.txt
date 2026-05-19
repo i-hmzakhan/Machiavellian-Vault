@@ -4,3 +4,4 @@ supabase
 google-generativeai
 pydantic
 python-dotenv
+supabase==2.3.4
