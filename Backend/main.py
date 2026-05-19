@@ -28,8 +28,8 @@ vault_safety_settings = {
 }
 
 app = FastAPI(title="The Vault API - Architect Edition")
+
 # --- SECURITY GATEKEEPER ---
-# It will look for your key in the environment variables. If running locally without one, it uses a fallback.
 EXPECTED_API_KEY = os.environ.get("VAULT_API_KEY", "local_dev_key_999")
 api_key_header = APIKeyHeader(name="X-Vault-Key", auto_error=False)
 
@@ -54,11 +54,12 @@ class GlobalLogEntry(BaseModel):
 class GlobalAdviceRequest(BaseModel):
     scenario_question: str
     chat_history: list = []
+    target_ids: list[str] = [] # NEW: Target IDs for the Deep Context Mesh
 
 class NewNodeRequest(BaseModel):
     name: str
     base_value: int
-    backstory: str = "" # NEW: Backstory Injection
+    backstory: str = ""
 
 class DeleteNodeRequest(BaseModel):
     target_entity_id: str
@@ -96,14 +97,11 @@ async def get_network():
         res = supabase.table("entities").select("*").execute()
         entities = res.data
 
-        # FIX: Added 'content_log' to the select statement so it doesn't crash!
         commits_res = supabase.table("commits").select("entity_id, calculated_diff, content_log").execute()
         
-        # Tally the total leverage shifts for each person safely
         leverage_map = {}
         for c in commits_res.data:
             eid = c['entity_id']
-            # Safe extraction just in case a database row has a NULL value
             diff = c.get('calculated_diff')
             diff_val = int(diff) if diff is not None else 0
             leverage_map[eid] = leverage_map.get(eid, 0) + diff_val
@@ -115,22 +113,20 @@ async def get_network():
             eid = entity["entity_id"]
             net_shift = leverage_map.get(eid, 0)
             
-            # --- THE THREAT MATRIX LOGIC ---
             if net_shift <= -3:
-                node_color = "#ef4444" # Red (High Threat / Hostile)
+                node_color = "#ef4444" 
             elif net_shift < 0:
-                node_color = "#f97316" # Orange (Warning / Losing Leverage)
+                node_color = "#f97316" 
             elif net_shift >= 3:
-                node_color = "#10b981" # Emerald (Secured / High Leverage)
+                node_color = "#10b981" 
             elif net_shift > 0:
-                node_color = "#34d399" # Light Green (Gaining Leverage)
+                node_color = "#34d399" 
             else:
-                node_color = "#4f46e5" # Indigo (Neutral / Baseline)
+                node_color = "#4f46e5" 
 
             nodes.append({"id": eid, "name": entity["name"], "val": 5, "color": node_color})
             links.append({"source": "11111111-1111-1111-1111-111111111111", "target": eid})
 
-        # Organic Cross-Linking: Connect nodes that share a history
         log_map = {}
         for c in commits_res.data:
             log = c.get('content_log', '')
@@ -152,11 +148,10 @@ async def get_network():
 
         return {"status": "success", "network": {"nodes": nodes, "links": links}}
     except Exception as e:
-        print(f"NETWORK MAP ERROR: {str(e)}") # Prints the exact error to terminal if it fails again
+        print(f"NETWORK MAP ERROR: {str(e)}") 
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/network", dependencies=[Depends(verify_vault_key)])
-@app.post("/add-node")
+@app.post("/add-node", dependencies=[Depends(verify_vault_key)])
 async def add_node(request: NewNodeRequest):
     try:
         entity_id = str(uuid.uuid4())
@@ -166,7 +161,6 @@ async def add_node(request: NewNodeRequest):
             "baseline_profile": f"Initial Power Value: {request.base_value}"
         }).execute()
         
-        # INJECT BACKSTORY AS LOG 0
         if request.backstory.strip():
             supabase.table("commits").insert({
                 "entity_id": entity_id,
@@ -178,8 +172,7 @@ async def add_node(request: NewNodeRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/network", dependencies=[Depends(verify_vault_key)])
-@app.post("/delete-node")
+@app.post("/delete-node", dependencies=[Depends(verify_vault_key)])
 async def delete_node(request: DeleteNodeRequest):
     try:
         supabase.table("commits").delete().eq("entity_id", request.target_entity_id).execute()
@@ -188,8 +181,7 @@ async def delete_node(request: DeleteNodeRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/network", dependencies=[Depends(verify_vault_key)])
-@app.post("/commit-global")
+@app.post("/commit-global", dependencies=[Depends(verify_vault_key)])
 async def commit_global(entry: GlobalLogEntry):
     try:
         entities_res = supabase.table("entities").select("entity_id, name").execute()
@@ -206,8 +198,6 @@ async def commit_global(entry: GlobalLogEntry):
         response = model.generate_content(prompt, safety_settings=vault_safety_settings)
         raw_json = response.text.replace('```json', '').replace('```', '').strip()
         
-        # --- NEW SAFETY NET ---
-        # If the AI returns nothing, or plain text instead of an array, catch it gracefully
         if not raw_json or not raw_json.startswith('['):
             print(f"AI declined to update. Raw output: {raw_json}")
             return {"status": "success", "message": "No network shifts detected.", "data": []}
@@ -231,32 +221,50 @@ async def commit_global(entry: GlobalLogEntry):
         return {"status": "success", "data": affected_nodes}
         
     except Exception as e:
-        # --- BRINGING BACK THE TERMINAL LOG ---
         print(f"CRITICAL ROUTER ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/get-advice-global", dependencies=[Depends(verify_vault_key)])
 async def get_advice_global(request: GlobalAdviceRequest):
     try:
-        # 1. Fetch Network State
-        entities_res = supabase.table("entities").select("entity_id, name, baseline_profile").execute()
-        network_context = "FULL NETWORK STATE:\n"
-        for ent in entities_res.data:
-            network_context += f"- Target: {ent['name']} | Profile: {ent['baseline_profile']}\n"
-            commits_res = supabase.table("commits").select("content_log, calculated_diff").eq("entity_id", ent['entity_id']).order("created_at", desc=True).limit(2).execute()
-            for c in commits_res.data:
-                network_context += f"  > History: {c['content_log']} (Shift: {c['calculated_diff']})\n"
+        # 1. BUILD THE DEEP CONTEXT MESH FROM SUPABASE
+        matrix_context = "### CONFIDENTIAL TARGET DOSSIERS ###\n"
+        matrix_context += "Analyze the raw behavioral logs below to formulate your strategy. Pay attention to cross-node leverage.\n\n"
 
-        # --- THE SLIDING WINDOW PROTOCOL ---
-        MAX_HISTORY = 6 # Limit memory to the last 3 interactions
-        
-        # Slice the history array if it gets too long
+        if not request.target_ids:
+            matrix_context += "[No specific targets detected in query. Providing general strategic advice based on visible network.]\n"
+            # Fallback: Just grab names and profiles if they didn't name anyone specific
+            entities_res = supabase.table("entities").select("entity_id, name, baseline_profile").execute()
+            for ent in entities_res.data:
+                matrix_context += f"- Target: {ent['name']} | Profile: {ent['baseline_profile']}\n"
+        else:
+            for target_id in request.target_ids:
+                # Fetch Entity Data
+                entity_response = supabase.table("entities").select("*").eq("entity_id", target_id).execute()
+                
+                # Fetch Raw Timeline (Limit 15 to preserve context window integrity)
+                history_response = supabase.table("commits").select("*").eq("entity_id", target_id).order("created_at", desc=True).limit(15).execute()
+                
+                if entity_response.data:
+                    entity = entity_response.data[0]
+                    matrix_context += f"--- TARGET: {entity['name']} ---\n"
+                    matrix_context += f"CURRENT PROFILE: {entity['baseline_profile']}\n"
+                    matrix_context += "RAW BEHAVIORAL TIMELINE (Most recent first):\n"
+                    
+                    if not history_response.data:
+                        matrix_context += "[No telemetry recorded yet]\n"
+                    else:
+                        for log in history_response.data:
+                            matrix_context += f"- [Shift: {log['calculated_diff']}] {log.get('content_log', '')}\n"
+                    matrix_context += "\n"
+
+        # 2. THE SLIDING WINDOW PROTOCOL (Memory constraint)
+        MAX_HISTORY = 6 
         if request.chat_history and len(request.chat_history) > MAX_HISTORY:
             recent_history = request.chat_history[-MAX_HISTORY:]
         else:
             recent_history = request.chat_history
 
-        # 2. Format the Chat History (Using the lightweight recent_history)
         history_context = "PREVIOUS CONVERSATION THREAD:\n"
         if not recent_history:
             history_context += "[No previous messages in this session]\n"
@@ -265,6 +273,7 @@ async def get_advice_global(request: GlobalAdviceRequest):
                 role = "GENERAL (User)" if msg.get("role") == "user" else "ADVISOR (You)"
                 history_context += f"{role}: {msg.get('text')}\n"
                 
+        # 3. ASSEMBLE THE MASTER PAYLOAD
         prompt = f"""
         You are the Socratic Strategist. 
         
@@ -290,11 +299,14 @@ async def get_advice_global(request: GlobalAdviceRequest):
         19. If the user wants specific facts or figures, provide them only. If they want general strategic advice, provide it without any fluff or philosophical framing. Always match the tone and style of the user's question.
         20. Your response should be concise, direct, and actionable. Avoid any unnecessary explanations or justifications. The user is seeking counsel, not a lecture.
         21. DO NOT use markdown. No asterisks (*), no bold text, no hashtags (#). Use standard plain text, spacing, and capitalization.
-        DIRECTIVE:
-        Read the network state AND the previous conversation thread. Treat the user like a general seeking counsel. 
-        Provide "If/Then" contingency paths. Detail the exact, actionable steps the user must take for each path based on the logic of Greene, Machiavelli, and Dostoevsky. Be cold, calculating, and direct.
         
-        {network_context}
+        DIRECTIVE:
+        Read the Deep Context Mesh dossiers below AND the previous conversation thread. Treat the user like a general seeking counsel. 
+        Provide "If/Then" contingency paths based on the raw timeline data. Detail the exact, actionable steps the user must take. Be cold, calculating, and direct.
+        
+        {matrix_context}
+        
+        {history_context}
         
         USER'S SCENARIO QUESTION:
         "{request.scenario_question}"
@@ -310,8 +322,7 @@ async def get_advice_global(request: GlobalAdviceRequest):
 class HistoryRequest(BaseModel):
     target_entity_id: str
 
-@app.get("/network", dependencies=[Depends(verify_vault_key)])
-@app.post("/node-history")
+@app.post("/node-history", dependencies=[Depends(verify_vault_key)])
 async def get_node_history(request: HistoryRequest):
     try:
         res = supabase.table("commits").select("content_log, calculated_diff, created_at").eq("entity_id", request.target_entity_id).order("created_at", desc=True).execute()
