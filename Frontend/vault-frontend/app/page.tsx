@@ -220,10 +220,22 @@ export default function VaultDashboard() {
     } else {
       const currentHistory = [...consultChat]; 
       setConsultChat(prev => [...prev, { role: "user", text: userInput }]);
-      setConsultChat(prev => [...prev, { role: "ai", text: "Analyzing network variables..." }]);
+      setConsultChat(prev => [...prev, { role: "ai", text: "Compiling multi-node dossiers..." }]);
       
+      // --- THE DEEP CONTEXT SCANNER ---
+      // 1. Scan the input against all known nodes
+      const involvedNodeIds = graphData.nodes
+        .filter((node: any) => userInput.toLowerCase().includes(node.name.toLowerCase()))
+        .map((node: any) => node.id);
+
+      // 2. Always include the currently selected node (if any), avoiding duplicates
+      if (selectedNode && !involvedNodeIds.includes(selectedNode.id)) {
+        involvedNodeIds.push(selectedNode.id);
+      }
+
       try {
-        const response = await getStrategicAdvice(userInput, currentHistory);
+        // 3. Send the query, history, AND the involved IDs to the backend
+        const response = await getStrategicAdvice(userInput, currentHistory, involvedNodeIds);
         setConsultChat(prev => {
           const newChat = [...prev];
           newChat[newChat.length - 1] = { role: "ai", text: response.advice };
@@ -237,7 +249,7 @@ export default function VaultDashboard() {
         });
       }
     }
-  };
+  }; // <-- FIXED: THIS BRACKET WAS MISSING!
 
   return (
     <>
@@ -340,7 +352,7 @@ export default function VaultDashboard() {
                   <X size={18} />
                 </button>
               </div>
-            </div> {/* <-- THIS WAS THE MISSING BRACKET THAT CRASHED THE SYSTEM */}
+            </div>
 
             <div className="w-full h-px bg-gradient-to-r from-transparent via-slate-700/50 to-transparent shrink-0"></div>
 
